@@ -667,11 +667,18 @@
         // -----------------------------------------------------------
         // INTERFACE RENDERING LOGIC
         // -----------------------------------------------------------
-        function renderDashboard(userData) {
-            document.getElementById('dash-avatar').src = userData.photoURL || 'https://via.placeholder.com/150';
+                function renderDashboard(userData) {
+            // Agar photoURL valid hai toh use karein, nahi toh default avatar set karein
+            const userAvatarImg = document.getElementById('dash-avatar');
+            userAvatarImg.src = userData.photoURL && userData.photoURL.trim() !== "" ? userData.photoURL : 'https://api.dicebear.com/7.x/bottts/svg?seed=' + encodeURIComponent(userData.name);
+            
+            // Handle image error fallback
+            userAvatarImg.onerror = function() {
+                this.src = 'https://ui-avatars.com/api/?name=' + encodeURIComponent(userData.name) + '&background=3b82f6&color=fff&bold=true';
+            };
+
             document.getElementById('dash-username').innerText = userData.name;
             document.getElementById('dash-uid').innerText = `ID: ${userData.id}`;
-            
             document.getElementById('stat-coins').innerText = userData.coins;
             document.getElementById('stat-referrals').innerText = userData.reffer;
             document.getElementById('stat-withdrawals').innerText = userData.totalWithdrawals;
@@ -680,6 +687,7 @@
             const refUrl = `https://t.me/${BOT_USERNAME}?start=${userData.id}`;
             document.getElementById('dash-ref-link').value = refUrl;
         }
+
 
         function renderAnnouncement(ann) {
             if(ann && ann.title) {
