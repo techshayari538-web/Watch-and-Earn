@@ -751,7 +751,15 @@
         }
 
         function renderProfile(userData) {
-            document.getElementById('prof-avatar').src = userData.photoURL || 'https://via.placeholder.com/150';
+                function renderProfile(userData) {
+            const profileAvatarImg = document.getElementById('prof-avatar');
+            profileAvatarImg.src = userData.photoURL && userData.photoURL.trim() !== "" ? userData.photoURL : 'https://api.dicebear.com/7.x/bottts/svg?seed=' + encodeURIComponent(userData.name);
+            
+            // Handle image error fallback
+            profileAvatarImg.onerror = function() {
+                this.src = 'https://ui-avatars.com/api/?name=' + encodeURIComponent(userData.name) + '&background=3b82f6&color=fff&bold=true';
+            };
+
             document.getElementById('prof-username').innerText = userData.name;
             document.getElementById('prof-uid').innerText = `ID: ${userData.id}`;
             document.getElementById('prof-refby').innerText = userData.refferBy || 'None';
@@ -759,6 +767,7 @@
             document.getElementById('prof-total-with').innerText = userData.totalWithdrawals;
             document.getElementById('prof-total-coins').innerText = `${userData.coins} Coins`;
         }
+
 
         // -----------------------------------------------------------
         // INTERACTIVE CORE OPERATIONS
