@@ -518,4 +518,449 @@
                     tg.expand();
 
                     if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
-                        tgUse
+                        tgUser = tg.initDataUnsafe.user;
+                    }
+                    if (tg.initDataUnsafe && tg.initDataUnsafe.start_param) {
+                        startParam = tg.initDataUnsafe.start_param;
+                    }
+                }
+            } catch (err) {
+                console.error("Telegram Context Initialization failed or running on browser runtime:", err);
+            }
+            currentUserId = String(tgUser.id);
+        }
+
+        // -----------------------------------------------------------
+        // FIREBASE & APP REALTIME SYNCHRONIZATION
+        // -----------------------------------------------------------
+        function initFirebase() {
+            firebase.initializeApp(firebaseConfig);
+            db = firebase.firestore();
+        }
+
+        async function createOrFetchUser() {
+            const userRef = db.collection('users').doc(currentUserId);
+            
+            try {
+                const doc = await userRef.get();
+                if (!doc.exists) {
+                    let referredByVal = null;
+                    if (startParam && startParam !== currentUserId) {
+                        referredByVal = String(startParam);
+                    }
+
+                    const newUser = {
+                        id: currentUserId,
+                        name: tgUser.first_name || "Telegram User",
+                        photoURL: tgUser.photo_url || "https://via.placeholder.com/150",
+                        coins: 0,
+                        reffer: 0,
+                        refferBy: referredByVal,
+                        tasksCompleted: 0,
+                        totalWithdrawals: 0
+                    };
+                    await userRef.set(newUser);
+                    showToast("Account initialized successfully!", "success");
+                }
+                
+                subscribeToUserClaims();
+                subscribeToUserRealtime();
+                subscribeToAnnouncements();
+                subscribeToTasks();
+                subscribeToWithdrawals();
+                
+                document.getElementById('global-loader').style.display = 'none';
+
+            } catch (err) {
+                console.error("Critical Runtime User Synchronization Mutation Fault: ", err);
+                showToast("System error binding your account profiles.", "error");
+            }
+        }
+
+        function subscribeToUserClaims() {
+            db.collection('user_claims')
+              .where('userId', '==', currentUserId)
+              .onSnapshot(snapshot => {
+                  completedTaskIds.clear();
+                  snapshot.forEach(doc => {
+                      completedTaskIds.add(doc.data().taskId);
+                  });
+                  renderQuickTasks();
+                  renderAllTasks();
+              }, error => console.error("Claims pipeline failure:", error));
+        }
+
+        function subscribeToUserRealtime() {
+            db.collection('users').doc(currentUserId).onSnapshot(doc => {
+                if(doc.exists) {
+                    const data = doc.data();
+                    renderDashboard(data);
+                    renderProfile(data);
+                }
+            }, error => console.error("User metrics operational sync fault:", error));
+        }
+
+        function subscribeToAnnouncements() {
+            db.collection('announcements')
+              .orderBy('createdAt', 'desc')
+              .limit(1)
+              .onSnapshot(snapshot => {
+                  if(!snapshot.empty) {
+                      renderAnnouncement(snapshot.docs[0].data());
+                  } else {
+                      document.getElementById('announcement-box').style.display = 'none';
+                  }
+              }, error => console.error("Announcement module fault:", error));
+        }
+
+        function subscribeToTasks() {
+            db.collection('tasks')
+              .orderBy('createdAt', 'desc')
+              .onSnapshot(snapshot => {
+                  globalTasksCached = [];
+                  snapshot.forEach(doc => {
+                      let item = doc.data();
+                      item.id = doc.id;
+                      globalTasksCached.push(item);
+                  });
+                  renderQuickTasks();
+                  renderAllTasks();
+              }, error => console.error("Task Engine Sync Error:", error));
+        }
+
+        function subscribeToWithdrawals() {
+            db.collection('withdrawals')
+              .where('userId', '==', currentUserId)
+              .orderBy('createdAt', 'desc')
+              .limit(3)
+              .onSnapshot(snapshot => {
+                  const historyContainer = document.getElementById('withdrawal-history-container');
+                  if(snapshot.empty) {
+                      historyContainer.innerHTML = '<div class="no-data">No historic records found.</div>';
+                      return;
+                  }
+                  
+                  let htmlStr = '';
+                  snapshot.forEach(doc => {
+                      const data = doc.data();
+                      let statusClass = 'status-pending';
+                      if(data.status === 'approved') statusClass = 'status-approved';
+                      if(data.status === 'rejected') statusClass = 'status-rejected';
+
+                      htmlStr += `
+                        <div class="history-item ${statusClass}">
+                            <div>
+                                <div style="font-size:0.9rem; font-weight:600;">UPI: ${data.upi}</div>
+                                <div style="font-size:0.75rem; color: var(--text-muted); margin-top:2px;">Requested: ${data.createdAt ? new Date(data.createdAt.seconds * 1000).toLocaleDateString() : 'Just Now'}</div>
+                            </div>
+                            <div style="text-align:right;">
+                                <div style="font-weight:700;">${data.amount} Coins</div>
+                                <div style="font-size:0.75rem; text-transform: capitalize; font-weight:600;">${data.status}</div>
+                            </div>
+                        </div>
+                      `;
+                  });
+                  historyContainer.innerHTML = htmlStr;
+              }, error => console.error("Withdrawal record compilation fault:", error));
+        }
+
+        // -----------------------------------------------------------
+        // INTERFACE RENDERING LOGIC
+        // -----------------------------------------------------------
+        function renderDashboard(userData) {
+            document.getElementById('dash-avatar').src = userData.photoURL || 'https://via.placeholder.com/150';
+            document.getElementById('dash-username').innerText = userData.name;
+            document.getElementById('dash-uid').innerText = `ID: ${userData.id}`;
+            
+            document.getElementById('stat-coins').innerText = userData.coins;
+            document.getElementById('stat-referrals').innerText = userData.reffer;
+            document.getElementById('stat-withdrawals').innerText = userData.totalWithdrawals;
+            document.getElementById('stat-tasks').innerText = userData.tasksCompleted;
+
+            const refUrl = `https://t.me/${BOT_USERNAME}?start=${userData.id}`;
+            document.getElementById('dash-ref-link').value = refUrl;
+        }
+
+        function renderAnnouncement(ann) {
+            if(ann && ann.title) {
+                document.getElementById('announcement-box').style.display = 'block';
+                document.getElementById('ann-title').innerText = ann.title;
+                document.getElementById('ann-body').innerText = ann.body || '';
+            }
+        }
+
+        function renderQuickTasks() {
+            const container = document.getElementById('quick-tasks-container');
+            const quicks = globalTasksCached.slice(0, 3);
+
+            if(quicks.length === 0) {
+                container.innerHTML = '<div class="no-data">No tasks active right now.</div>';
+                return;
+            }
+
+            container.innerHTML = quicks.map(task => buildTaskCardHtml(task)).join('');
+        }
+
+        function renderAllTasks(tasksToRender = globalTasksCached) {
+            const container = document.getElementById('all-tasks-container');
+            if(tasksToRender.length === 0) {
+                container.innerHTML = '<div class="no-data">No tasks match your criteria.</div>';
+                return;
+            }
+            container.innerHTML = tasksToRender.map(task => buildTaskCardHtml(task)).join('');
+        }
+
+        function buildTaskCardHtml(task) {
+            const isClaimed = completedTaskIds.has(task.id);
+            const buttonStateHtml = isClaimed 
+                ? `<button class="btn" style="background:var(--surface-accent); color:var(--text-muted);" disabled><i class="fa-solid fa-circle-check"></i> Claimed</button>`
+                : `<button class="btn" style="background:var(--accent-color);" onclick="claimTask('${task.id}', ${task.reward})"><i class="fa-solid fa-gift"></i> Claim Reward</button>`;
+
+            return `
+                <div class="task-card" id="task-card-${task.id}">
+                    <div class="task-meta">
+                        <div>
+                            <div class="task-title">${task.name}</div>
+                            <div class="task-type">${task.type}</div>
+                        </div>
+                        <div class="task-reward">+${task.reward} Coins</div>
+                    </div>
+                    <div class="task-actions">
+                        <button class="btn btn-secondary" onclick="openTaskLink('${task.link}')"><i class="fa-solid fa-arrow-up-right-from-square"></i> Open Task</button>
+                        ${buttonStateHtml}
+                    </div>
+                </div>
+            `;
+        }
+
+        function filterTasks() {
+            const query = document.getElementById('task-search-input').value.toLowerCase();
+            const filtered = globalTasksCached.filter(t => 
+                t.name.toLowerCase().includes(query) || 
+                t.type.toLowerCase().includes(query)
+            );
+            renderAllTasks(filtered);
+        }
+
+        function renderProfile(userData) {
+            document.getElementById('prof-avatar').src = userData.photoURL || 'https://via.placeholder.com/150';
+            document.getElementById('prof-username').innerText = userData.name;
+            document.getElementById('prof-uid').innerText = `ID: ${userData.id}`;
+            document.getElementById('prof-refby').innerText = userData.refferBy || 'None';
+            document.getElementById('prof-total-ref').innerText = userData.reffer;
+            document.getElementById('prof-total-with').innerText = userData.totalWithdrawals;
+            document.getElementById('prof-total-coins').innerText = `${userData.coins} Coins`;
+        }
+
+        // -----------------------------------------------------------
+        // INTERACTIVE CORE OPERATIONS
+        // -----------------------------------------------------------
+        function openTaskLink(url) {
+            if(window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.openLink) {
+                window.Telegram.WebApp.openLink(url);
+            } else {
+                window.open(url, '_blank');
+            }
+        }
+
+        async function claimTask(taskId, reward) {
+            if (completedTaskIds.has(taskId)) {
+                showToast("Task already claimed!", "warning");
+                return;
+            }
+
+            const claimRef = db.collection('user_claims').doc(`${currentUserId}_${taskId}`);
+            const userRef = db.collection('users').doc(currentUserId);
+
+            try {
+                await db.runTransaction(async (transaction) => {
+                    const claimDoc = await transaction.get(claimRef);
+                    if (claimDoc.exists) {
+                        throw new Error("already_claimed");
+                    }
+                    
+                    transaction.set(claimRef, {
+                        userId: currentUserId,
+                        taskId: taskId,
+                        claimedAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+
+                    transaction.update(userRef, {
+                        coins: firebase.firestore.FieldValue.increment(Number(reward)),
+                        tasksCompleted: firebase.firestore.FieldValue.increment(1)
+                    });
+                });
+
+                showToast(`Success! Added +${reward} coins to balance.`, "success");
+
+            } catch (err) {
+                if (err.message === "already_claimed") {
+                    showToast("You've already claimed this reward.", "warning");
+                } else {
+                    console.error("Transaction Core Execution Interruption:", err);
+                    showToast("Network transaction failed. Retry execution.", "error");
+                }
+            }
+        }
+
+        // -----------------------------------------------------------
+        // 🎥 MONOTAG REWARDED VIDEO ADS INTEGRATION
+        // -----------------------------------------------------------
+        async function watchMonotagAd() {
+            const adButton = document.getElementById('btn-monotag-ad');
+            adButton.disabled = true;
+            showToast("Loading Sponsored Video Ad Stream...", "warning");
+            
+            // Check if Monotag SDK function exists on window object
+            if (typeof show_11195216 === 'function') {
+                show_11195216('pop').then(async () => {
+                    // This block executes if ad is fully rendered/watched completely
+                    const userRef = db.collection('users').doc(currentUserId);
+                    try {
+                        await userRef.update({
+                            coins: firebase.firestore.FieldValue.increment(50)
+                        });
+                        showToast("Ad viewed completely! +50 Coins added directly.", "success");
+                    } catch(dbErr) {
+                        console.error("Failed updating coins in Firestore:", dbErr);
+                        showToast("Error updating database balance record.", "error");
+                    } finally {
+                        adButton.disabled = false;
+                    }
+                }).catch(e => {
+                    console.error("Monotag Ad Network error event:", e);
+                    showToast("Ad playback failed or closed too early.", "error");
+                    adButton.disabled = false;
+                });
+            } else {
+                showToast("Ad Network script blocked or offline. Retry shortly.", "error");
+                adButton.disabled = false;
+            }
+        }
+
+        async function submitWithdrawal(e) {
+            e.preventDefault();
+            const upiId = document.getElementById('withdraw-upi').value.trim();
+            const amount = parseInt(document.getElementById('withdraw-amount').value);
+            const submitBtn = document.getElementById('btn-withdraw-submit');
+
+            if(!upiId || isNaN(amount) || amount <= 0) {
+                showToast("Please supply compliant parameters.", "warning");
+                return;
+            }
+
+            submitBtn.disabled = true;
+
+            try {
+                const userRef = db.collection('users').doc(currentUserId);
+                const userSnap = await userRef.get();
+                
+                if(!userSnap.exists) {
+                    showToast("User schema missing validation.", "error");
+                    submitBtn.disabled = false;
+                    return;
+                }
+
+                const currentCoins = userSnap.data().coins;
+                if(currentCoins < amount) {
+                    showToast(`Insufficient Balance! You possess ${currentCoins} coins.`, "error");
+                    submitBtn.disabled = false;
+                    return;
+                }
+
+                await db.collection('withdrawals').add({
+                    userId: currentUserId,
+                    upi: upiId,
+                    amount: amount,
+                    status: "pending",
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+
+                await userRef.update({
+                    coins: firebase.firestore.FieldValue.increment(-amount),
+                    totalWithdrawals: firebase.firestore.FieldValue.increment(1)
+                });
+
+                showToast("Withdrawal submission processed successfully!", "success");
+                document.getElementById('withdrawal-form').reset();
+
+            } catch(err) {
+                console.error("Payout logic structural exception failure:", err);
+                showToast("Failed to process withdrawal order.", "error");
+            } finally {
+                submitBtn.disabled = false;
+            }
+        }
+
+        function forceRefreshProfile() {
+            showToast("Refetching user account states from core...", "success");
+            if(db && currentUserId) {
+                db.collection('users').doc(currentUserId).get().then(doc => {
+                    if(doc.exists) renderProfile(doc.data());
+                });
+            }
+        }
+
+        // -----------------------------------------------------------
+        // NAVIGATION & EXTRAS
+        // -----------------------------------------------------------
+        function switchTabs(targetSectionId, element) {
+            document.querySelectorAll('.app-section').forEach(sec => sec.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(nav => nav.classList.remove('active'));
+            
+            document.getElementById(targetSectionId).classList.add('active');
+            element.classList.add('active');
+
+            if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.HapticFeedback) {
+                window.Telegram.WebApp.HapticFeedback.impactOccurred('light');
+            }
+        }
+
+        function copyReferralLink() {
+            const linkInput = document.getElementById('dash-ref-link');
+            if(!linkInput || linkInput.value.includes('Generating')) {
+                showToast("Link engine preparation incomplete.", "warning");
+                return;
+            }
+            
+            linkInput.select();
+            linkInput.setSelectionRange(0, 99999);
+
+            try {
+                navigator.clipboard.writeText(linkInput.value);
+                showToast("Referral Link copied directly to clipboard!", "success");
+            } catch (err) {
+                showToast("Failed automated copying. Select manually.", "error");
+            }
+        }
+
+        function showToast(message, type = "info") {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            
+            let icon = '<i class="fa-solid fa-circle-info"></i>';
+            if(type === 'success') icon = '<i class="fa-solid fa-circle-check"></i>';
+            if(type === 'error') icon = '<i class="fa-solid fa-circle-xmark"></i>';
+            if(type === 'warning') icon = '<i class="fa-solid fa-triangle-exclamation"></i>';
+
+            toast.innerHTML = `${icon} <span>${message}</span>`;
+            container.appendChild(toast);
+
+            setTimeout(() => {
+                toast.style.animation = 'slideIn 0.3s ease-out reverse alternate forwards';
+                setTimeout(() => toast.remove(), 300);
+            }, 3500);
+        }
+
+        // -----------------------------------------------------------
+        // RUNTIME LIFECYCLE INITIALIZER ENTRYPOINT
+        // -----------------------------------------------------------
+        window.addEventListener('DOMContentLoaded', () => {
+            initTelegram();
+            initFirebase();
+            createOrFetchUser();
+        });
+    </script>
+</body>
+</html>
