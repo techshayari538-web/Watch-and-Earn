@@ -9,6 +9,8 @@
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
+    <script src='//libtl.com/sdk.js' data-zone='11195216' data-sdk='show_11195216'></script>
+    
     <style>
         :root {
             --bg-color: #111827;
@@ -398,7 +400,7 @@
                 <div class="task-reward">+50 Coins</div>
             </div>
             <div style="margin-top: 12px;">
-                <button class="btn" style="background: var(--accent-color)" onclick="watchMonotagAd()"><i class="fa-solid fa-play"></i> Watch Ad & Earn</button>
+                <button class="btn" id="btn-monotag-ad" style="background: var(--accent-color)" onclick="watchMonotagAd()"><i class="fa-solid fa-play"></i> Watch Ad & Earn</button>
             </div>
         </div>
 
@@ -486,20 +488,15 @@
         // -----------------------------------------------------------
         // CONFIGURATIONS & INITIAL SETUP
         // -----------------------------------------------------------
-        
-        // REPLACE WITH YOUR ACTUAL FIREBASE WEB APP COMPAT CONFIGURATION
         const firebaseConfig = {
-  apiKey: "AIzaSyBy2ALm1h2-PByL5XsUsKaeJ6h6TC0Fuqk",
-  authDomain: "tg-bot-49302.firebaseapp.com",
-  projectId: "tg-bot-49302",
-  storageBucket: "tg-bot-49302.firebasestorage.app",
-  messagingSenderId: "352273041352",
-  appId: "1:352273041352:web:efa858f18bc0335c8ba2fd"
-};
+            apiKey: "AIzaSyBy2ALm1h2-PByL5XsUsKaeJ6h6TC0Fuqk",
+            authDomain: "tg-bot-49302.firebaseapp.com",
+            projectId: "tg-bot-49302",
+            storageBucket: "tg-bot-49302.firebasestorage.app",
+            messagingSenderId: "352273041352",
+            appId: "1:352273041352:web:efa858f18bc0335c8ba2fd"
+        };
 
-
-        // REPLACE WITH YOUR ACTUAL BOT USERNAME (Without @)
-        // Bot Username is utilized to programmatically generate structural Telegram Referrals deep links.
         const BOT_USERNAME = "WatchNdEarnbot"; 
 
         // State Store variables
@@ -518,7 +515,7 @@
                 if (window.Telegram && window.Telegram.WebApp) {
                     const tg = window.Telegram.WebApp;
                     tg.ready();
-                    tg.expand(); // Auto Expand window
+                    tg.expand();
 
                     if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
                         tgUser = tg.initDataUnsafe.user;
@@ -547,7 +544,6 @@
             try {
                 const doc = await userRef.get();
                 if (!doc.exists) {
-                    // Handle deep link reference if parsing data during creation
                     let referredByVal = null;
                     if (startParam && startParam !== currentUserId) {
                         referredByVal = String(startParam);
@@ -567,14 +563,12 @@
                     showToast("Account initialized successfully!", "success");
                 }
                 
-                // Establish Dynamic Multi-Section Subscriptions
                 subscribeToUserClaims();
                 subscribeToUserRealtime();
                 subscribeToAnnouncements();
                 subscribeToTasks();
                 subscribeToWithdrawals();
                 
-                // Clear loading screen
                 document.getElementById('global-loader').style.display = 'none';
 
             } catch (err) {
@@ -583,7 +577,6 @@
             }
         }
 
-        // Realtime Claims Mapping
         function subscribeToUserClaims() {
             db.collection('user_claims')
               .where('userId', '==', currentUserId)
@@ -592,13 +585,11 @@
                   snapshot.forEach(doc => {
                       completedTaskIds.add(doc.data().taskId);
                   });
-                  // Re-evaluate task buttons UI states when claims collection mutates
                   renderQuickTasks();
                   renderAllTasks();
               }, error => console.error("Claims pipeline failure:", error));
         }
 
-        // Realtime Profile Listener
         function subscribeToUserRealtime() {
             db.collection('users').doc(currentUserId).onSnapshot(doc => {
                 if(doc.exists) {
@@ -609,7 +600,6 @@
             }, error => console.error("User metrics operational sync fault:", error));
         }
 
-        // Realtime Announcements
         function subscribeToAnnouncements() {
             db.collection('announcements')
               .orderBy('createdAt', 'desc')
@@ -623,7 +613,6 @@
               }, error => console.error("Announcement module fault:", error));
         }
 
-        // Realtime Task Database
         function subscribeToTasks() {
             db.collection('tasks')
               .orderBy('createdAt', 'desc')
@@ -639,7 +628,6 @@
               }, error => console.error("Task Engine Sync Error:", error));
         }
 
-        // Realtime Personal Recent 3 Withdrawals
         function subscribeToWithdrawals() {
             db.collection('withdrawals')
               .where('userId', '==', currentUserId)
@@ -684,13 +672,11 @@
             document.getElementById('dash-username').innerText = userData.name;
             document.getElementById('dash-uid').innerText = `ID: ${userData.id}`;
             
-            // Statistics Metrics Bindings
             document.getElementById('stat-coins').innerText = userData.coins;
             document.getElementById('stat-referrals').innerText = userData.reffer;
             document.getElementById('stat-withdrawals').innerText = userData.totalWithdrawals;
             document.getElementById('stat-tasks').innerText = userData.tasksCompleted;
 
-            // Compute dynamic referral deep links
             const refUrl = `https://t.me/${BOT_USERNAME}?start=${userData.id}`;
             document.getElementById('dash-ref-link').value = refUrl;
         }
@@ -705,7 +691,6 @@
 
         function renderQuickTasks() {
             const container = document.getElementById('quick-tasks-container');
-            // Take slice of top 3 tasks from cached tasks
             const quicks = globalTasksCached.slice(0, 3);
 
             if(quicks.length === 0) {
@@ -794,7 +779,6 @@
                         throw new Error("already_claimed");
                     }
                     
-                    // Proceed with Transaction Atomic Commit Writes
                     transaction.set(claimRef, {
                         userId: currentUserId,
                         taskId: taskId,
@@ -819,21 +803,39 @@
             }
         }
 
+        // -----------------------------------------------------------
+        // 🎥 MONOTAG REWARDED VIDEO ADS INTEGRATION
+        // -----------------------------------------------------------
         async function watchMonotagAd() {
-            showToast("Loading Sponsored Monetag Video Ad Stream...", "warning");
+            const adButton = document.getElementById('btn-monotag-ad');
+            adButton.disabled = true;
+            showToast("Loading Sponsored Video Ad Stream...", "warning");
             
-            // Simulating Ad play workflow process sequence structure
-            setTimeout(async () => {
-                const userRef = db.collection('users').doc(currentUserId);
-                try {
-                    await userRef.update({
-                        coins: firebase.firestore.FieldValue.increment(50)
-                    });
-                    showToast("Ad viewed completely! +50 Coins claimed.", "success");
-                } catch(e) {
-                    showToast("Error recording video view payout state.", "error");
-                }
-            }, 2500);
+            // Check if Monotag SDK function exists on window object
+            if (typeof show_11195216 === 'function') {
+                show_11195216('pop').then(async () => {
+                    // This block executes if ad is fully rendered/watched completely
+                    const userRef = db.collection('users').doc(currentUserId);
+                    try {
+                        await userRef.update({
+                            coins: firebase.firestore.FieldValue.increment(50)
+                        });
+                        showToast("Ad viewed completely! +50 Coins added directly.", "success");
+                    } catch(dbErr) {
+                        console.error("Failed updating coins in Firestore:", dbErr);
+                        showToast("Error updating database balance record.", "error");
+                    } finally {
+                        adButton.disabled = false;
+                    }
+                }).catch(e => {
+                    console.error("Monotag Ad Network error event:", e);
+                    showToast("Ad playback failed or closed too early.", "error");
+                    adButton.disabled = false;
+                });
+            } else {
+                showToast("Ad Network script blocked or offline. Retry shortly.", "error");
+                adButton.disabled = false;
+            }
         }
 
         async function submitWithdrawal(e) {
@@ -866,7 +868,6 @@
                     return;
                 }
 
-                // Append reference inside withdrawals tracking block
                 await db.collection('withdrawals').add({
                     userId: currentUserId,
                     upi: upiId,
@@ -875,7 +876,6 @@
                     createdAt: firebase.firestore.FieldValue.serverTimestamp()
                 });
 
-                // Deduct balance securely and update historic counters
                 await userRef.update({
                     coins: firebase.firestore.FieldValue.increment(-amount),
                     totalWithdrawals: firebase.firestore.FieldValue.increment(1)
@@ -905,15 +905,12 @@
         // NAVIGATION & EXTRAS
         // -----------------------------------------------------------
         function switchTabs(targetSectionId, element) {
-            // Deactivate existing visible layers
             document.querySelectorAll('.app-section').forEach(sec => sec.classList.remove('active'));
             document.querySelectorAll('.nav-item').forEach(nav => nav.classList.remove('active'));
             
-            // Trigger target display states
             document.getElementById(targetSectionId).classList.add('active');
             element.classList.add('active');
 
-            // Optional structural haptic feedback injection point for Telegram Mini Apps
             if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.HapticFeedback) {
                 window.Telegram.WebApp.HapticFeedback.impactOccurred('light');
             }
@@ -927,13 +924,12 @@
             }
             
             linkInput.select();
-            linkInput.setSelectionRange(0, 99999); // Mobile compatibility
+            linkInput.setSelectionRange(0, 99999);
 
             try {
                 navigator.clipboard.writeText(linkInput.value);
                 showToast("Referral Link copied directly to clipboard!", "success");
             } catch (err) {
-                // Fallback attempt alternative mechanisms
                 showToast("Failed automated copying. Select manually.", "error");
             }
         }
@@ -951,7 +947,6 @@
             toast.innerHTML = `${icon} <span>${message}</span>`;
             container.appendChild(toast);
 
-            // Evict element structure smoothly after duration limits
             setTimeout(() => {
                 toast.style.animation = 'slideIn 0.3s ease-out reverse alternate forwards';
                 setTimeout(() => toast.remove(), 300);
