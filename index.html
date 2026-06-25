@@ -643,14 +643,13 @@
               }, error => console.error("Task Engine Sync Error:", error));
         }
 
-        function subscribeToWithdrawals() {
+           function subscribeToWithdrawals() {
             db.collection('withdrawals')
               .where('userId', '==', currentUserId)
-              .orderBy('createdAt', 'desc')
-              .limit(3)
               .onSnapshot(snapshot => {
                   const historyContainer = document.getElementById('withdrawal-history-container');
-                  if(snapshot.empty) {
+                  
+                  if(!snapshot || snapshot.empty) {
                       historyContainer.innerHTML = '<div class="no-data">No historic records found.</div>';
                       return;
                   }
