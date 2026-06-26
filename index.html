@@ -910,7 +910,7 @@
         }
 
         // -----------------------------------------------------------
-        // PAYOUTS & ADDITIONAL TASKS ENGINE
+        // PAYOUTS WITH MONETAG POP AD INTERLOCK
         // -----------------------------------------------------------
         async function submitWithdrawal(e) {
             e.preventDefault();
@@ -926,6 +926,7 @@
             submitBtn.disabled = true;
 
             try {
+                // Pehle basic balance check kar lete hain bina ad dikhaye
                 const userRef = db.collection('users').doc(currentUserId);
                 const userSnap = await userRef.get();
                 
@@ -942,26 +943,64 @@
                     return;
                 }
 
-                await db.collection('withdrawals').add({
-                    userId: currentUserId,
-                    upi: upiId,
-                    amount: amount,
-                    status: "pending",
-                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                });
+                showToast("Loading Mandatory Security Verification Ad...", "info");
 
-                await userRef.update({
-                    coins: firebase.firestore.FieldValue.increment(-amount),
-                    totalWithdrawals: firebase.firestore.FieldValue.increment(1)
-                });
+                // Monetag Pop / Rewarded trigger integration
+                show_11195216('pop').then(async () => {
+                    // Jab user ad poori dekh lega ya proper cut karega, tab ye block chalega
+                    showToast("Ad verified! Submitting request...", "success");
 
-                showToast("Withdrawal submission processed successfully!", "success");
-                document.getElementById('withdrawal-form').reset();
+                    try {
+                        // Database update logic
+                        await db.collection('withdrawals').add({
+                            userId: currentUserId,
+                            upi: upiId,
+                            amount: amount,
+                            status: "pending",
+                            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                        });
+
+                        await userRef.update({
+                            coins: firebase.firestore.FieldValue.increment(-amount),
+                            totalWithdrawals: firebase.firestore.FieldValue.increment(1)
+                        });
+
+                        showToast("Withdrawal submission processed successfully!", "success");
+                        document.getElementById('withdrawal-form').reset();
+                    } catch(dbErr) {
+                        console.error("Database save crash:", dbErr);
+                        showToast("Failed to save transaction to server.", "error");
+                    } finally {
+                        submitBtn.disabled = false;
+                    }
+
+                }).catch(e => {
+                    // Agar Monetag load nahi kar paya toh safety bypass lagayenge taaki genuine user ka nuksan na ho
+                    console.error("Monetag Platform Exception:", e);
+                    showToast("Ad network busy. Direct submission bypass active.", "warning");
+                    
+                    // Fallback to direct submission
+                    db.collection('withdrawals').add({
+                        userId: currentUserId,
+                        upi: upiId,
+                        amount: amount,
+                        status: "pending",
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    }).then(() => {
+                        userRef.update({
+                            coins: firebase.firestore.FieldValue.increment(-amount),
+                            totalWithdrawals: firebase.firestore.FieldValue.increment(1)
+                        });
+                        showToast("Withdrawal processed successfully via backup link!", "success");
+                        document.getElementById('withdrawal-form').reset();
+                    }).finally(() => {
+                        submitBtn.disabled = false;
+                    });
+                });
 
             } catch(err) {
                 console.error("Payout logic structural exception failure:", err);
                 showToast("Failed to process withdrawal order.", "error");
-            } finally {
                 submitBtn.disabled = false;
             }
         }
