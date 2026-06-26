@@ -525,6 +525,9 @@
         let completedTaskIds = new Set();
         let adTimerInterval;
         let isAdTimerFinished = false;
+        
+        // --- ANTI-CHEAT: TASK OPEN STATE TRACKER ---
+        let openedTasks = {};
 
         // -----------------------------------------------------------
         // TELEGRAM INITIALIZATION
@@ -750,7 +753,7 @@
                         <div class="task-reward">+${task.reward} Coins</div>
                     </div>
                     <div class="task-actions">
-                        <button class="btn btn-secondary" onclick="openTaskLink('${task.link}')"><i class="fa-solid fa-arrow-up-right-from-square"></i> Open Task</button>
+                        <button class="btn btn-secondary" onclick="openTaskLink('${task.link}', '${task.id}')"><i class="fa-solid fa-arrow-up-right-from-square"></i> Open Task</button>
                         ${buttonStateHtml}
                     </div>
                 </div>
@@ -785,7 +788,12 @@
         // -----------------------------------------------------------
         // INTERACTIVE CORE OPERATIONS
         // -----------------------------------------------------------
-        function openTaskLink(url) {
+        function openTaskLink(url, taskId) {
+            // Anti-cheat verification state set karein
+            if (taskId) {
+                openedTasks[taskId] = true;
+            }
+            
             if(window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.openLink) {
                 window.Telegram.WebApp.openLink(url);
             } else {
@@ -794,6 +802,12 @@
         }
 
         async function claimTask(taskId, reward) {
+            // STRICT VERIFICATION CHECK: Task open kiya hai ya nahi?
+            if (!openedTasks[taskId]) {
+                showToast("❌ Pehle 'Open Task' button par click karke task complete karein!", "error");
+                return;
+            }
+
             if (completedTaskIds.has(taskId)) {
                 showToast("Task already claimed!", "warning");
                 return;
@@ -822,6 +836,9 @@
                 });
 
                 showToast(`Success! Added +${reward} coins to balance.`, "success");
+                
+                // Clear validation after usage
+                delete openedTasks[taskId];
 
             } catch (err) {
                 if (err.message === "already_claimed") {
