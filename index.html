@@ -377,7 +377,7 @@
 
         <div class="card">
             <div class="section-title"><i class="fa-solid fa-share-nodes" style="color:var(--primary-color)"></i> Invite Friends</div>
-            <p style="font-size:0.85rem; color: var(--text-muted); margin-bottom: 8px;">Earn extra rewards whenever a user joins via your link. And get 500 Coins per referral.</p>
+            <p style="font-size:0.85rem; color: var(--text-muted); margin-bottom: 8px;">Earn extra rewards whenever a user joins via your link. And get upto 800 Coins per referral.</p>
             <div class="referral-box">
                 <input type="text" class="form-input" id="dash-ref-link" readonly value="Generating Link...">
                 <button class="btn" style="width: auto; padding: 0 16px;" onclick="copyReferralLink()"><i class="fa-regular fa-copy"></i></button>
@@ -415,12 +415,15 @@
             <div class="section-title"><i class="fa-solid fa-wallet"></i> Request Payout</div>
             <form id="withdrawal-form" onsubmit="submitWithdrawal(event)">
                 <div class="form-group">
-                    <label for="withdraw-upi">UPI ID ( Double check your UPI ID)</label>
+                    <label for="withdraw-upi">UPI ID</label>
+                    <label for="withdraw-upi">Enter your UPI ID carefully.</label>
                     <input type="text" id="withdraw-upi" class="form-input" placeholder="example@upi" required>
                 </div>
                 <div class="form-group">
                     <label for="withdraw-amount">Amount (Coins)</label>
-                    <input type="number" id="withdraw-amount" class="form-input" placeholder="Minimum 1000" min="1000" required>
+                    <label for="withdraw-amount">Withdrawal Fee: 9% </label>
+                    <input type="number" id="withdraw-amount" class="form-input" placeholder="Min 1000 - Max 50000" min="1000" max="50000" required>
+
                 </div>
                 <button type="submit" class="btn" id="btn-withdraw-submit"><i class="fa-solid fa-paper-plane"></i> Submit Request</button>
             </form>
