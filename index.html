@@ -9,8 +9,6 @@
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
-    <!-- 🔥 FIX: Monetag script ko head se hata diya hai taaki Private DNS loading block na kare -->
-    
     <style>
         :root {
             --bg-color: #111827;
@@ -587,10 +585,35 @@
 
                 document.getElementById('global-loader').style.display = 'none';
 
+                // 🔥 INIT AUTO INTERSTITIAL: Profile load hote hi background me setup triggger hoga
+                setupInAppInterstitial();
+
             } catch (err) {
                 console.error("Critical Runtime Fault: ", err);
                 showToast("System error binding your account profiles.", "error");
                 document.getElementById('global-loader').style.display = 'none'; 
+            }
+        }
+
+        // 🔥 MONETAG IN-APP INTERSTITIAL AUTOMATION ROUTINE
+        async function setupInAppInterstitial() {
+            try {
+                await injectMonetagScript();
+                if (typeof show_11195216 === 'function') {
+                    console.log("Initializing In-App Interstitial Engine...");
+                    show_11195216({
+                        type: 'inApp',
+                        inAppSettings: {
+                            frequency: 2,
+                            capping: 0.1,
+                            interval: 30,
+                            timeout: 7,
+                            everyPage: false
+                        }
+                    });
+                }
+            } catch(e) {
+                console.log("In-App Ads suppressed: Private DNS Active.");
             }
         }
 
@@ -904,7 +927,7 @@
             }
         }
 
-        // 🔥 DYNAMIC LOADING FIX FOR PRIVATE DNS
+        // 🔥 ASYNC SCRIPT LOADER (Private DNS Safety Layer)
         function injectMonetagScript() {
             return new Promise((resolve, reject) => {
                 if (typeof show_11195216 === 'function') {
@@ -928,13 +951,12 @@
             showToast("Initializing ad network...", "info");
 
             try {
-                // Click karne par script dynamically load hogi
                 await injectMonetagScript();
-                if (typeof show_11195216 === 'function') {
+                // Reward ad trigger karne ka manual function Call (Default format rules)
+                if (typeof show_11195216 === 'function' && typeof show_11195216.inApp === 'undefined') {
                     show_11195216().catch(e => console.log("Ad module started"));
                 }
             } catch(e) {
-                // Agar user ka Private DNS script block karega toh seedhe error catch hoga
                 showToast("⚠️ Private DNS / Ad-Blocker detected! Turn it off to watch ads.", "error");
                 adButton.disabled = false;
                 return; 
@@ -1042,7 +1064,6 @@
                         executeWithdrawalInDB(upiId, amount, submitBtn);
                     }
                 } catch(e) {
-                    // DNS blocked: Bypass ad requirement for withdrawal so user request doesn't get stuck
                     executeWithdrawalInDB(upiId, amount, submitBtn);
                 }
             } catch(err) {
@@ -1102,7 +1123,7 @@
             initFirebase();
             createOrFetchUser();
 
-            // 🔥 MASTER TIMER OVERRIDE: Agar kuch bhi block ho, 3.5 second me screen khul jayegi.
+            // 🔥 MASTER TIMER OVERRIDE: Safety Timeout Engine
             setTimeout(() => {
                 const loader = document.getElementById('global-loader');
                 if(loader && loader.style.display !== 'none') {
