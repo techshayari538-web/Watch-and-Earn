@@ -9,7 +9,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
-    <script src='//libtl.com/sdk.js' data-zone='11195216' data-sdk='show_11195216'></script>
+    <script async defer src='//libtl.com/sdk.js' data-zone='11195216' data-sdk='show_11195216'></script>
     
     <style>
         :root {
@@ -36,13 +36,12 @@
         body {
             background-color: var(--bg-color);
             color: var(--text-main);
-            padding-bottom: 80px; /* Space for bottom navigation */
+            padding-bottom: 80px; 
             min-height: 100vh;
             display: flex;
             flex-direction: column;
         }
 
-        /* Loading Overlay */
         #global-loader {
             position: fixed;
             top: 0; left: 0; right: 0; bottom: 0;
@@ -69,7 +68,6 @@
             100% { transform: rotate(360deg); }
         }
 
-        /* Toast Notifications */
         #toast-container {
             position: fixed;
             top: 20px;
@@ -103,7 +101,6 @@
             to { transform: translateY(0); opacity: 1; }
         }
 
-        /* App Sections/Tabs */
         .app-section {
             display: none;
             padding: 16px;
@@ -117,7 +114,6 @@
             display: block;
         }
 
-        /* Shared UI Elements */
         .card {
             background: var(--surface-color);
             border-radius: 16px;
@@ -135,7 +131,6 @@
             gap: 8px;
         }
 
-        /* Form Controls */
         .form-group {
             margin-bottom: 16px;
         }
@@ -184,7 +179,6 @@
         }
         .btn-secondary:hover { background: #4b5563; }
 
-        /* Bottom Navigation Bar */
         .bottom-nav {
             position: fixed;
             bottom: 0; left: 0; right: 0;
@@ -222,7 +216,6 @@
             transform: translateY(-2px);
         }
 
-        /* --- TAB 1 SPECIFICS --- */
         .user-header {
             display: flex;
             align-items: center;
@@ -267,7 +260,6 @@
         .stat-val { font-size: 1.3rem; font-weight: 700; color: var(--text-main); margin-top: 4px;}
         .stat-lbl { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;}
 
-        /* Task Cards Layout */
         .task-list { display: flex; flex-direction: column; gap: 12px; }
         .task-card {
             background: var(--surface-color);
@@ -291,10 +283,8 @@
             margin-top: 8px;
         }
 
-        /* --- TAB 2 SPECIFICS --- */
         .search-container { margin-bottom: 16px; }
 
-        /* --- TAB 3 SPECIFICS --- */
         .history-list { display: flex; flex-direction: column; gap: 10px; margin-top: 12px;}
         .history-item {
             background: var(--bg-color);
@@ -309,7 +299,6 @@
         .status-approved { border-left-color: var(--accent-color); color: var(--accent-color); }
         .status-rejected { border-left-color: var(--danger-color); color: var(--danger-color); }
 
-        /* --- TAB 4 SPECIFICS --- */
         .profile-container { text-align: center; }
         .profile-large-avatar { width: 90px; height: 90px; border-radius: 50%; margin: 0 auto 12px; border: 3px solid var(--primary-color); display: block;}
         .profile-details-list { text-align: left; margin: 20px 0; background: var(--bg-color); border-radius: 10px; overflow: hidden;}
@@ -368,6 +357,20 @@
             </div>
         </div>
 
+        <div class="card" id="daily-bonus-container" style="border: 1px solid var(--primary-color); background: linear-gradient(180deg, rgba(59, 130, 246, 0.05) 0%, rgba(31, 41, 55, 1) 100%);">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <div style="font-weight: 700; font-size: 1.1rem; display: flex; align-items: center; gap: 8px;">
+                        <span>🎁</span> Daily Reward Vector
+                    </div>
+                    <div id="daily-bonus-status-lbl" style="font-size: 0.8rem; color: var(--text-muted); margin-top: 4px;">Loading setup...</div>
+                </div>
+                <button class="btn" id="btn-claim-daily-bonus" style="width: auto; padding: 10px 20px; font-size: 0.9rem; background: var(--primary-color);" onclick="executeDailyBonusClaim()">
+                    Claim
+                </button>
+            </div>
+        </div>
+
         <div class="card">
             <div class="section-title"><i class="fa-solid fa-bolt" style="color:var(--warning-color)"></i> Quick Tasks</div>
             <div class="task-list" id="quick-tasks-container">
@@ -423,7 +426,6 @@
                     <label for="withdraw-amount">Amount (Coins)</label>
                     <label for="withdraw-amount">Withdrawal Fee: 9% </label>
                     <input type="number" id="withdraw-amount" class="form-input" placeholder="Min 1000 - Max 50000" min="1000" max="50000" required>
-
                 </div>
                 <button type="submit" class="btn" id="btn-withdraw-submit"><i class="fa-solid fa-paper-plane"></i> Submit Request</button>
             </form>
@@ -502,9 +504,6 @@
     </div>
 
     <script>
-        // -----------------------------------------------------------
-        // CONFIGURATIONS & INITIAL SETUP
-        // -----------------------------------------------------------
         const firebaseConfig = {
             apiKey: "AIzaSyBy2ALm1h2-PByL5XsUsKaeJ6h6TC0Fuqk",
             authDomain: "tg-bot-49302.firebaseapp.com",
@@ -516,7 +515,6 @@
 
         const BOT_USERNAME = "WatchNdEarnbot"; 
 
-        // State Store variables
         let db;
         let tgUser = { id: "999999", first_name: "Afsan Admin", photo_url: "https://via.placeholder.com/150" };
         let startParam = null;
@@ -526,12 +524,8 @@
         let adTimerInterval;
         let isAdTimerFinished = false;
         
-        // --- ANTI-CHEAT: TASK OPEN STATE TRACKER ---
         let openedTasks = {};
 
-        // -----------------------------------------------------------
-        // TELEGRAM INITIALIZATION
-        // -----------------------------------------------------------
         function initTelegram() {
             try {
                 if (window.Telegram && window.Telegram.WebApp) {
@@ -547,14 +541,11 @@
                     }
                 }
             } catch (err) {
-                console.error("Telegram Context Initialization failed or running on browser runtime:", err);
+                console.error("Telegram Context Initialization failed:", err);
             }
             currentUserId = String(tgUser.id);
         }
 
-        // -----------------------------------------------------------
-        // FIREBASE & APP REALTIME SYNCHRONIZATION
-        // -----------------------------------------------------------
         function initFirebase() {
             firebase.initializeApp(firebaseConfig);
             db = firebase.firestore();
@@ -575,11 +566,12 @@
                         id: currentUserId,
                         name: tgUser.first_name || "Telegram User",
                         photoURL: tgUser.photo_url || "https://via.placeholder.com/150",
-                        coins: 150,
+                        coins: 200,
                         reffer: 0,
                         refferBy: referredByVal,
                         tasksCompleted: 0,
-                        totalWithdrawals: 0
+                        totalWithdrawals: 0,
+                        lastBonusClaimed: null 
                     };
                     await userRef.set(newUser);
                     showToast("Account initialized successfully!", "success");
@@ -591,11 +583,86 @@
                 subscribeToTasks();
                 subscribeToWithdrawals();
                 
+                await syncDailyBonusStatusEngine();
+
                 document.getElementById('global-loader').style.display = 'none';
 
             } catch (err) {
                 console.error("Critical Runtime User Synchronization Mutation Fault: ", err);
                 showToast("System error binding your account profiles.", "error");
+                document.getElementById('global-loader').style.display = 'none'; // Safe fail
+            }
+        }
+
+        async function syncDailyBonusStatusEngine() {
+            try {
+                const configSnap = await db.collection('settings').doc('app_config').get();
+                let rewardPool = 100; 
+                if (configSnap.exists && configSnap.data().dailyBonusAmount) {
+                    rewardPool = parseInt(configSnap.data().dailyBonusAmount);
+                }
+
+                const userSnap = await db.collection('users').doc(currentUserId).get();
+                if (!userSnap.exists) return;
+
+                const userData = userSnap.data();
+                const lastClaimed = userData.lastBonusClaimed;
+
+                const btn = document.getElementById('btn-claim-daily-bonus');
+                const lbl = document.getElementById('daily-bonus-status-lbl');
+
+                if (lastClaimed) {
+                    const now = new Date().getTime();
+                    const lastTime = lastClaimed.toDate().getTime();
+                    const diffHours = (now - lastTime) / (1000 * 60 * 60);
+
+                    if (diffHours < 24) {
+                        const remaining = Math.ceil(24 - diffHours);
+                        btn.disabled = true;
+                        btn.style.background = "var(--surface-accent)";
+                        btn.innerText = "Locked";
+                        lbl.innerText = `🎁 Come back in ${remaining} hours to claim again!`;
+                        return;
+                    }
+                }
+
+                btn.disabled = false;
+                btn.style.background = "var(--accent-color)";
+                btn.innerText = "Claim Now";
+                lbl.innerText = `Claim your daily bonus reward of +${rewardPool} Coins!`;
+
+            } catch (ex) {
+                console.error("Sync Engine exception runtime: ", ex);
+            }
+        }
+
+        async function executeDailyBonusClaim() {
+            const btn = document.getElementById('btn-claim-daily-bonus');
+            btn.disabled = true;
+            btn.innerText = "Claiming...";
+
+            try {
+                const configSnap = await db.collection('settings').doc('app_config').get();
+                let rewardPool = 100;
+                if (configSnap.exists && configSnap.data().dailyBonusAmount) {
+                    rewardPool = parseInt(configSnap.data().dailyBonusAmount);
+                }
+
+                const userRef = db.collection('users').doc(currentUserId);
+                
+                await userRef.update({
+                    coins: firebase.firestore.FieldValue.increment(rewardPool),
+                    lastBonusClaimed: firebase.firestore.FieldValue.serverTimestamp()
+                });
+
+                showToast(`🎉 Success! +${rewardPool} Coins credited to your profile.`, "success");
+                await syncDailyBonusStatusEngine();
+
+            } catch (err) {
+                console.error("Critical Mutation Lock fault: ", err);
+                showToast("Claim transaction failed.", "error");
+                btn.disabled = false;
+                btn.innerText = "Claim Now";
             }
         }
 
@@ -650,7 +717,7 @@
               }, error => console.error("Task Engine Sync Error:", error));
         }
 
-           function subscribeToWithdrawals() {
+        function subscribeToWithdrawals() {
             db.collection('withdrawals')
               .where('userId', '==', currentUserId)
               .onSnapshot(snapshot => {
@@ -685,11 +752,7 @@
               }, error => console.error("Withdrawal record compilation fault:", error));
         }
 
-        // -----------------------------------------------------------
-        // INTERFACE RENDERING LOGIC
-        // -----------------------------------------------------------
         function renderDashboard(userData) {
-            // Safe profile picture check with cross-origin safety layers
             const userAvatarImg = document.getElementById('dash-avatar');
             userAvatarImg.src = userData.photoURL && userData.photoURL.trim() !== "" ? userData.photoURL : 'https://api.dicebear.com/7.x/bottts/svg?seed=' + encodeURIComponent(userData.name);
             
@@ -737,11 +800,12 @@
             container.innerHTML = tasksToRender.map(task => buildTaskCardHtml(task)).join('');
         }
 
+        // Fixed single task button display issue
         function buildTaskCardHtml(task) {
             const isClaimed = completedTaskIds.has(task.id);
             const buttonStateHtml = isClaimed 
                 ? `<button class="btn" style="background:var(--surface-accent); color:var(--text-muted);" disabled><i class="fa-solid fa-circle-check"></i> Claimed</button>`
-                : `<button class="btn" style="background:var(--accent-color);" onclick="claimTask('${task.id}', ${task.reward})"><i class="fa-solid fa-gift"></i> Claim Reward</button>`;
+                : `<button class="btn" style="background:var(--accent-color);" onclick="claimTask('${task.id}', ${task.reward})"><i class="fa-solid fa-gift"></i> Claim</button>`;
 
             return `
                 <div class="task-card" id="task-card-${task.id}">
@@ -753,7 +817,7 @@
                         <div class="task-reward">+${task.reward} Coins</div>
                     </div>
                     <div class="task-actions">
-                        <button class="btn btn-secondary" onclick="openTaskLink('${task.link}', '${task.id}')"><i class="fa-solid fa-arrow-up-right-from-square"></i> Open Task</button>
+                        <button class="btn btn-secondary" onclick="openTaskLink('${task.link}', '${task.id}')"><i class="fa-solid fa-arrow-up-right-from-square"></i> Open</button>
                         ${buttonStateHtml}
                     </div>
                 </div>
@@ -785,15 +849,10 @@
             document.getElementById('prof-total-coins').innerText = `${userData.coins} Coins`;
         }
 
-        // -----------------------------------------------------------
-        // INTERACTIVE CORE OPERATIONS
-        // -----------------------------------------------------------
         function openTaskLink(url, taskId) {
-            // Anti-cheat verification state set karein
             if (taskId) {
                 openedTasks[taskId] = true;
             }
-            
             if(window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.openLink) {
                 window.Telegram.WebApp.openLink(url);
             } else {
@@ -802,9 +861,8 @@
         }
 
         async function claimTask(taskId, reward) {
-            // STRICT VERIFICATION CHECK: Task open kiya hai ya nahi?
             if (!openedTasks[taskId]) {
-                showToast("❌ Pehle 'Open Task' button par click karke task complete karein!", "error");
+                showToast("❌ Pehle 'Open' button par click karke task complete karein!", "error");
                 return;
             }
 
@@ -836,78 +894,77 @@
                 });
 
                 showToast(`Success! Added +${reward} coins to balance.`, "success");
-                
-                // Clear validation after usage
                 delete openedTasks[taskId];
 
             } catch (err) {
                 if (err.message === "already_claimed") {
                     showToast("You've already claimed this reward.", "warning");
                 } else {
-                    console.error("Transaction Core Execution Interruption:", err);
+                    console.error("Transaction Error:", err);
                     showToast("Network transaction failed. Retry execution.", "error");
                 }
             }
         }
 
-        // -----------------------------------------------------------
-        // 🎥 MONOTAG REWARDED VIDEO ADS WITH ANTI-CHEAT TIMER
-        // -----------------------------------------------------------
         async function watchMonotagAd() {
-            const adButton = document.getElementById('btn-monotag-ad');
-            adButton.disabled = true;
-            
-            // 1. Monotag Ad activation block
-            if (typeof show_11195216 === 'function') {
-                show_11195216().catch(e => console.log("Ad window requested"));
-            } else {
-                openTaskLink('https://libtl.com/sdk.js?zone=11195216');
-            }
-
-            // 2. Clear previous counters and open UI overlay lock screen
-            clearInterval(adTimerInterval);
-            isAdTimerFinished = false;
-            let timeLeft = 30; // 30-Second Countdown Execution Range
-            
-            const modal = document.getElementById('ad-timer-modal');
-            const countdownDisplay = document.getElementById('ad-countdown');
-            const statusText = document.getElementById('ad-status-text');
-            const claimBtn = document.getElementById('btn-claim-ad-reward');
-
-            modal.style.display = 'flex';
-            countdownDisplay.innerText = timeLeft + "s";
-            statusText.style.color = "var(--danger-color)";
-            statusText.innerText = "⚠️ Lock Active: Do not close the app!";
-            claimBtn.style.display = "none";
-
-            // 3. Interval background sync loop ticker
-            adTimerInterval = setInterval(() => {
-                timeLeft--;
-                countdownDisplay.innerText = timeLeft + "s";
-
-                if (timeLeft <= 0) {
-                    clearInterval(adTimerInterval);
-                    isAdTimerFinished = true;
-                    
-                    countdownDisplay.innerText = "🎉 Finished!";
-                    statusText.style.color = "var(--accent-color)";
-                    statusText.innerText = "Verification Complete! You can now claim.";
-                    claimBtn.style.display = "flex";
-                }
-            }, 1000);
+    const adButton = document.getElementById('btn-monotag-ad');
+    adButton.disabled = true;
+    
+    // Check karein ki kya function sach me execute ho sakta hai (DNS/Blocker check)
+    if (typeof show_11195216 === 'function') {
+        try {
+            show_11195216().catch(e => console.log("Ad bypass catch"));
+        } catch(e) {
+            console.log("Ad script execution blocked.");
         }
+    } else {
+        // Agar Private DNS ne block kiya hai, toh user ko warning toast dikhayein
+        showToast("⚠️ Ad Blocker/Private DNS detected! Please disable it to earn coins.", "warning");
+        adButton.disabled = false;
+        return; // Yahan se rok dein taaki user bina ad dekhe coins na le sake
+    }
 
-        // 4. Server Callback Execution Layer on user claim trigger
+    clearInterval(adTimerInterval);
+    isAdTimerFinished = false;
+    let timeLeft = 30; 
+    
+    const modal = document.getElementById('ad-timer-modal');
+    const countdownDisplay = document.getElementById('ad-countdown');
+    const statusText = document.getElementById('ad-status-text');
+    const claimBtn = document.getElementById('btn-claim-ad-reward');
+
+    modal.style.display = 'flex';
+    countdownDisplay.innerText = timeLeft + "s";
+    statusText.innerText = "⚠️ Lock Active: Do not close the app!";
+    claimBtn.style.display = "none";
+
+    adTimerInterval = setInterval(() => {
+        timeLeft--;
+        countdownDisplay.innerText = timeLeft + "s";
+
+        if (timeLeft <= 0) {
+            clearInterval(adTimerInterval);
+            isAdTimerFinished = true;
+            
+            countdownDisplay.innerText = "🎉 Finished!";
+            statusText.style.color = "var(--accent-color)";
+            statusText.innerText = "Verification Complete! You can now claim.";
+            claimBtn.style.display = "flex";
+        }
+    }, 1000);
+}
+
+
         async function creditAdCoins() {
             if (!isAdTimerFinished) {
-                showToast("Timer incomplete! Complete the stream.", "error");
+                showToast("Timer incomplete!", "error");
                 return;
             }
 
             const modal = document.getElementById('ad-timer-modal');
             const adButton = document.getElementById('btn-monotag-ad');
             
-            showToast("Verifying on secure server...", "warning");
+            showToast("Verifying stream...", "warning");
             modal.style.display = 'none';
 
             const callbackUrl = `https://backend-refer.vercel.app/api/telegram?monotag_callback=true&userId=${currentUserId}`;
@@ -929,9 +986,6 @@
             }
         }
 
-        // -----------------------------------------------------------
-        // PAYOUTS WITH MONETAG POP AD INTERLOCK
-        // -----------------------------------------------------------
         async function submitWithdrawal(e) {
             e.preventDefault();
             const upiId = document.getElementById('withdraw-upi').value.trim();
@@ -946,12 +1000,11 @@
             submitBtn.disabled = true;
 
             try {
-                // Pehle basic balance check kar lete hain bina ad dikhaye
                 const userRef = db.collection('users').doc(currentUserId);
                 const userSnap = await userRef.get();
                 
                 if(!userSnap.exists) {
-                    showToast("User schema missing validation.", "error");
+                    showToast("User context verification error.", "error");
                     submitBtn.disabled = false;
                     return;
                 }
@@ -963,15 +1016,12 @@
                     return;
                 }
 
-                showToast("Loading Mandatory Security Verification Ad...", "info");
+                showToast("Loading Security Verification Ad...", "info");
 
-                // Monetag Pop / Rewarded trigger integration
                 show_11195216('pop').then(async () => {
-                    // Jab user ad poori dekh lega ya proper cut karega, tab ye block chalega
                     showToast("Ad verified! Submitting request...", "success");
 
                     try {
-                        // Database update logic
                         await db.collection('withdrawals').add({
                             userId: currentUserId,
                             upi: upiId,
@@ -989,17 +1039,15 @@
                         document.getElementById('withdrawal-form').reset();
                     } catch(dbErr) {
                         console.error("Database save crash:", dbErr);
-                        showToast("Failed to save transaction to server.", "error");
+                        showToast("Failed to save transaction.", "error");
                     } finally {
                         submitBtn.disabled = false;
                     }
 
                 }).catch(e => {
-                    // Agar Monetag load nahi kar paya toh safety bypass lagayenge taaki genuine user ka nuksan na ho
-                    console.error("Monetag Platform Exception:", e);
-                    showToast("Ad network busy. Direct submission bypass active.", "warning");
+                    console.error("Monetag Network Error:", e);
+                    showToast("Network bypass active.", "warning");
                     
-                    // Fallback to direct submission
                     db.collection('withdrawals').add({
                         userId: currentUserId,
                         upi: upiId,
@@ -1011,7 +1059,7 @@
                             coins: firebase.firestore.FieldValue.increment(-amount),
                             totalWithdrawals: firebase.firestore.FieldValue.increment(1)
                         });
-                        showToast("Withdrawal processed successfully via backup link!", "success");
+                        showToast("Withdrawal processed successfully via fallback routing!", "success");
                         document.getElementById('withdrawal-form').reset();
                     }).finally(() => {
                         submitBtn.disabled = false;
@@ -1019,14 +1067,14 @@
                 });
 
             } catch(err) {
-                console.error("Payout logic structural exception failure:", err);
-                showToast("Failed to process withdrawal order.", "error");
+                console.error("Payout exception structural failure:", err);
+                showToast("Failed to process order.", "error");
                 submitBtn.disabled = false;
             }
         }
 
         function forceRefreshProfile() {
-            showToast("Refetching user account states from core...", "success");
+            showToast("Refetching data profiles...", "success");
             if(db && currentUserId) {
                 db.collection('users').doc(currentUserId).get().then(doc => {
                     if(doc.exists) renderProfile(doc.data());
@@ -1034,9 +1082,6 @@
             }
         }
 
-        // -----------------------------------------------------------
-        // NAVIGATION & EXTRAS
-        // -----------------------------------------------------------
         function switchTabs(targetSectionId, element) {
             document.querySelectorAll('.app-section').forEach(sec => sec.classList.remove('active'));
             document.querySelectorAll('.nav-item').forEach(nav => nav.classList.remove('active'));
@@ -1052,7 +1097,7 @@
         function copyReferralLink() {
             const linkInput = document.getElementById('dash-ref-link');
             if(!linkInput || linkInput.value.includes('Generating')) {
-                showToast("Link engine preparation incomplete.", "warning");
+                showToast("Engine preparation incomplete.", "warning");
                 return;
             }
             
@@ -1063,7 +1108,7 @@
                 navigator.clipboard.writeText(linkInput.value);
                 showToast("Referral Link copied directly to clipboard!", "success");
             } catch (err) {
-                showToast("Failed automated copying. Select manually.", "error");
+                showToast("Failed automated copying.", "error");
             }
         }
 
@@ -1086,9 +1131,6 @@
             }, 3500);
         }
 
-        // -----------------------------------------------------------
-        // RUNTIME LIFECYCLE INITIALIZER ENTRYPOINT
-        // -----------------------------------------------------------
         window.addEventListener('DOMContentLoaded', () => {
             initTelegram();
             initFirebase();
