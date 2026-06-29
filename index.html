@@ -9,6 +9,9 @@
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
+    <!-- 🔥 ADSGRAM SDK INTEGRATION -->
+    <script src="https://sad.adsgram.ai/js/sad.min.js"></script>
+    
     <style>
         :root {
             --bg-color: #111827;
@@ -339,7 +342,7 @@
             <div class="stat-card">
                 <div class="stat-lbl">Total Coins</div>
                 <div class="stat-val" id="stat-coins">0</div>
-                <div class="stat-lbl">₹1 = 250 Coins</div>
+                <div class="stat-lbl">₹1 = 500 Coins</div>
             </div>
             <div class="stat-card">
                 <div class="stat-lbl">Referrals</div>
@@ -397,12 +400,12 @@
             <div class="task-meta">
                 <div>
                     <div class="task-title">Watch Sponsored Video</div>
-                    <div class="task-type">Monotag Ad Network</div>
+                    <div class="task-type">Adsgram Ad Network</div>
                 </div>
                 <div class="task-reward">+50 Coins</div>
             </div>
             <div style="margin-top: 12px;">
-                <button class="btn" id="btn-monotag-ad" style="background: var(--accent-color)" onclick="watchMonotagAd()"><i class="fa-solid fa-play"></i> Watch Ad & Earn</button>
+                <button class="btn" id="btn-adsgram-ad" style="background: var(--accent-color)" onclick="watchAdsgramAd()"><i class="fa-solid fa-play"></i> Watch Ad & Earn</button>
             </div>
         </div>
 
@@ -488,19 +491,6 @@
         </button>
     </nav>
 
-    <div id="ad-timer-modal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(17, 24, 39, 0.96); z-index: 10005; flex-direction: column; justify-content: center; align-items: center; padding: 20px; text-align: center;">
-        <div style="background: var(--surface-color); padding: 30px; border-radius: 20px; border: 2px solid var(--primary-color); max-width: 90%; width: 340px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);">
-            <i class="fa-solid fa-clock" style="font-size: 3rem; color: var(--warning-color); margin-bottom: 15px;"></i>
-            <h3 style="margin-bottom: 10px; font-weight: 700;">Watching Sponsored Ad</h3>
-            <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 20px; line-height: 1.4;">Please wait until the video finishes. Leaving or closing early cancels the reward completely.</p>
-            
-            <div id="ad-countdown" style="font-size: 2.5rem; font-weight: 800; color: var(--accent-color); margin-bottom: 20px; letter-spacing: 1px;">30s</div>
-            
-            <p id="ad-status-text" style="font-size: 0.85rem; color: var(--danger-color); font-weight: 600;">⚠️ Lock Active: Do not close the app!</p>
-            <button id="btn-claim-ad-reward" class="btn" style="display: none; background: var(--accent-color); margin-top: 15px;" onclick="creditAdCoins()">🎁 Claim 50 Coins</button>
-        </div>
-    </div>
-
     <script>
         const firebaseConfig = {
             apiKey: "AIzaSyBy2ALm1h2-PByL5XsUsKaeJ6h6TC0Fuqk",
@@ -519,9 +509,6 @@
         let currentUserId = "";
         let globalTasksCached = [];
         let completedTaskIds = new Set();
-        let adTimerInterval;
-        let isAdTimerFinished = false;
-        
         let openedTasks = {};
 
         function initTelegram() {
@@ -585,35 +572,10 @@
 
                 document.getElementById('global-loader').style.display = 'none';
 
-                // 🔥 INIT AUTO INTERSTITIAL: Profile load hote hi background me setup triggger hoga
-                setupInAppInterstitial();
-
             } catch (err) {
                 console.error("Critical Runtime Fault: ", err);
                 showToast("System error binding your account profiles.", "error");
                 document.getElementById('global-loader').style.display = 'none'; 
-            }
-        }
-
-        // 🔥 MONETAG IN-APP INTERSTITIAL AUTOMATION ROUTINE
-        async function setupInAppInterstitial() {
-            try {
-                await injectMonetagScript();
-                if (typeof show_11195216 === 'function') {
-                    console.log("Initializing In-App Interstitial Engine...");
-                    show_11195216({
-                        type: 'inApp',
-                        inAppSettings: {
-                            frequency: 2,
-                            capping: 0.1,
-                            interval: 30,
-                            timeout: 7,
-                            everyPage: false
-                        }
-                    });
-                }
-            } catch(e) {
-                console.log("In-App Ads suppressed: Private DNS Active.");
             }
         }
 
@@ -927,84 +889,54 @@
             }
         }
 
-        // 🔥 ASYNC SCRIPT LOADER (Private DNS Safety Layer)
-        function injectMonetagScript() {
-            return new Promise((resolve, reject) => {
-                if (typeof show_11195216 === 'function') {
-                    resolve();
-                    return;
+        // 🔥 ADSGRAM NATIVE VIDEO AD ENGINE
+        async function watchAdsgramAd() {
+            const adButton = document.getElementById('btn-adsgram-ad');
+            adButton.disabled = true;
+            showToast("Loading Adsgram Video...", "info");
+
+            if (!window.Adsgram) {
+                showToast("Ad network unavailable. Check Ad-Blocker/DNS.", "error");
+                adButton.disabled = false;
+                return;
+            }
+
+            // ⚠️ APNI ADSGRAM BLOCK ID COPIED STRING YAHAN DALEIN:
+            const AdController = window.Adsgram.init({ 
+                blockId: "36573" 
+            });
+
+            AdController.show().then((result) => {
+                // User ne full ad dekha bina close kiye
+                showToast("🎉 Ad finished! Adding 50 Coins...", "success");
+                creditAdCoins();
+            }).catch((result) => {
+                // User ne beech me kat diya ya script error aayi
+                if (result.error) {
+                    console.error("Adsgram Error: ", result.description);
+                    showToast("Ad failed to render properly.", "error");
+                } else {
+                    showToast("⚠️ Reward cancelled: Ad was skipped!", "warning");
                 }
-                const script = document.createElement('script');
-                script.src = 'https://libtl.com/sdk.js';
-                script.setAttribute('data-zone', '11195216');
-                script.setAttribute('data-sdk', 'show_11195216');
-                script.onload = () => resolve();
-                script.onerror = () => reject(new Error("DNS Blocked"));
-                document.head.appendChild(script);
+            }).finally(() => {
+                adButton.disabled = false;
             });
         }
 
-        async function watchMonotagAd() {
-            const adButton = document.getElementById('btn-monotag-ad');
-            adButton.disabled = true;
-            
-            showToast("Initializing ad network...", "info");
-
-            try {
-                await injectMonetagScript();
-                // Reward ad trigger karne ka manual function Call (Default format rules)
-                if (typeof show_11195216 === 'function' && typeof show_11195216.inApp === 'undefined') {
-                    show_11195216().catch(e => console.log("Ad module started"));
-                }
-            } catch(e) {
-                showToast("⚠️ Private DNS / Ad-Blocker detected! Turn it off to watch ads.", "error");
-                adButton.disabled = false;
-                return; 
-            }
-
-            clearInterval(adTimerInterval);
-            isAdTimerFinished = false;
-            let timeLeft = 30; 
-            
-            const modal = document.getElementById('ad-timer-modal');
-            const countdownDisplay = document.getElementById('ad-countdown');
-            const statusText = document.getElementById('ad-status-text');
-            const claimBtn = document.getElementById('btn-claim-ad-reward');
-
-            modal.style.display = 'flex';
-            countdownDisplay.innerText = timeLeft + "s";
-            statusText.innerText = "⚠️ Lock Active: Do not close the app!";
-            claimBtn.style.display = "none";
-
-            adTimerInterval = setInterval(() => {
-                timeLeft--;
-                countdownDisplay.innerText = timeLeft + "s";
-
-                if (timeLeft <= 0) {
-                    clearInterval(adTimerInterval);
-                    isAdTimerFinished = true;
-                    countdownDisplay.innerText = "🎉 Finished!";
-                    statusText.style.color = "var(--accent-color)";
-                    statusText.innerText = "Verification Complete! You can now claim.";
-                    claimBtn.style.display = "flex";
-                }
-            }, 1000);
-        }
-
         async function creditAdCoins() {
-            if (!isAdTimerFinished) return;
-            const modal = document.getElementById('ad-timer-modal');
-            const adButton = document.getElementById('btn-monotag-ad');
-            modal.style.display = 'none';
-
             const callbackUrl = `https://backend-refer.vercel.app/api/telegram?monotag_callback=true&userId=${currentUserId}`;
             try {
+                // S2S fallback update trigger
                 await fetch(callbackUrl);
-                showToast("Success! +50 Coins added to your wallet.", "success");
+                
+                // Directly local profile par update trigger safely via transaction
+                const userRef = db.collection('users').doc(currentUserId);
+                await userRef.update({
+                    coins: firebase.firestore.FieldValue.increment(50)
+                });
+                showToast("50 Coins added to your wallet!", "success");
             } catch (err) {
-                showToast("Ad rewards updated successfully.", "info");
-            } finally {
-                adButton.disabled = false;
+                showToast("Profile balanced updated successfully.", "info");
             }
         }
 
@@ -1050,22 +982,7 @@
                     return;
                 }
 
-                showToast("Loading security token...", "info");
-
-                try {
-                    await injectMonetagScript();
-                    if (typeof show_11195216 === 'function') {
-                        show_11195216('pop').then(() => {
-                            executeWithdrawalInDB(upiId, amount, submitBtn);
-                        }).catch(() => {
-                            executeWithdrawalInDB(upiId, amount, submitBtn);
-                        });
-                    } else {
-                        executeWithdrawalInDB(upiId, amount, submitBtn);
-                    }
-                } catch(e) {
-                    executeWithdrawalInDB(upiId, amount, submitBtn);
-                }
+                executeWithdrawalInDB(upiId, amount, submitBtn);
             } catch(err) {
                 submitBtn.disabled = false;
             }
@@ -1123,7 +1040,6 @@
             initFirebase();
             createOrFetchUser();
 
-            // 🔥 MASTER TIMER OVERRIDE: Safety Timeout Engine
             setTimeout(() => {
                 const loader = document.getElementById('global-loader');
                 if(loader && loader.style.display !== 'none') {
