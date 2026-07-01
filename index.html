@@ -417,12 +417,11 @@
             <form id="withdrawal-form" onsubmit="submitWithdrawal(event)">
                 <div class="form-group">
                     <label for="withdraw-upi">UPI ID</label>
-                    <label for="withdraw-upi">Enter your UPI ID carefully.</label>
                     <input type="text" id="withdraw-upi" class="form-input" placeholder="example@upi" required>
                 </div>
                 <div class="form-group">
                     <label for="withdraw-amount">Amount (Coins)</label>
-                    <label for="withdraw-amount">Withdrawal Fee: 9% </label>
+                    <label style="font-size: 0.75rem; color: var(--danger-color); margin-top: 2px; display: block;">Withdrawal Fee: 9% </label>
                     <input type="number" id="withdraw-amount" class="form-input" placeholder="Min 1000 - Max 50000" min="1000" max="50000" required>
                 </div>
                 <button type="submit" class="btn" id="btn-withdraw-submit"><i class="fa-solid fa-paper-plane"></i> Submit Request</button>
@@ -550,6 +549,7 @@
         }
 
         async function createOrFetchUser() {
+            if (!db) return;
             const userRef = db.collection('users').doc(currentUserId);
             
             try {
@@ -582,15 +582,11 @@
                 subscribeToWithdrawals();
                 
                 await syncDailyBonusStatusEngine();
-
                 document.getElementById('global-loader').style.display = 'none';
 
-                // 🔥 INIT AUTO INTERSTITIAL: Profile load hote hi background me setup triggger hoga
-                setupInAppInterstitial();
-
             } catch (err) {
-                console.error("Critical Runtime Fault: ", err);
-                showToast("System error binding your account profiles.", "error");
+                console.error("Critical Runtime Fault Stack: ", err);
+                showToast("Failed to secure profile binding. Please reload.", "error");
                 document.getElementById('global-loader').style.display = 'none'; 
             }
         }
@@ -905,7 +901,6 @@
             }
         }
 
-        // 🔥 ASYNC SCRIPT LOADER (Private DNS Safety Layer)
         function injectMonetagScript() {
             return new Promise((resolve, reject) => {
                 if (typeof show_11195216 === 'function') {
@@ -930,7 +925,6 @@
 
             try {
                 await injectMonetagScript();
-                // Reward ad trigger karne ka manual function Call (Default format rules)
                 if (typeof show_11195216 === 'function' && typeof show_11195216.inApp === 'undefined') {
                     show_11195216().catch(e => console.log("Ad module started"));
                 }
@@ -1101,7 +1095,6 @@
             initFirebase();
             createOrFetchUser();
 
-            // 🔥 MASTER TIMER OVERRIDE: Safety Timeout Engine
             setTimeout(() => {
                 const loader = document.getElementById('global-loader');
                 if(loader && loader.style.display !== 'none') {
